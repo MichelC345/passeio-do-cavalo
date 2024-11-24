@@ -20,7 +20,7 @@ export default function Home() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <h1>Knight's Tour Visualization</h1>
+      <h1>Passeio do Cavalo usando busca em profundidade limitada</h1>
       <div style={{
         display: "grid",
         gridTemplateColumns: `repeat(5, 50px)`,
