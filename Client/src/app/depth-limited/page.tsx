@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import io from "socket.io-client";
+import { Button } from "@/components/ui/button";
 
 const socket = io("http://localhost:5000"); // Backend WebSocket URL
 const n = 5;
@@ -17,6 +18,10 @@ export default function Home() {
     // Cleanup on unmount
     return () => socket.off("update_board");
   }, []);
+
+  const initHC = async () => {
+    socket.emit("start");
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -45,6 +50,7 @@ export default function Home() {
           </div>
         ))}
       </div>
+      <Button onClick={initHC} className="mt-10">Iniciar algoritmo</Button>
     </div>
   );
 }

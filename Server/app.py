@@ -68,7 +68,8 @@ def print_board(board):
     else:
         return []'''
 
-@app.route('/start')
+#@app.route('/start')
+@socketio.on("start")
 def start_knights_tour():
     socketio.start_background_task(run_knights_tour)
     return "Knight's Tour started"
