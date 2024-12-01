@@ -6,6 +6,7 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 N = 5  # Board dimensions
+total_movements = 0 # Quantidade de movimentos necessários
 KNIGHT_MOVES = [
     (2, 1), (1, 2), (-1, 2), (-2, 1),
     (-2, -1), (-1, -2), (1, -2), (2, -1)
@@ -15,6 +16,7 @@ def is_valid_move(x, y, board):
     return 0 <= x < N and 0 <= y < N and board[x][y] == -1
 
 def depth_limited_search(board, x, y, move_count, depth_limit):
+    global total_movements
     if move_count == depth_limit:
         #updates.append([row[:] for row in board])
         return True
@@ -23,6 +25,7 @@ def depth_limited_search(board, x, y, move_count, depth_limit):
         next_x, next_y = x + dx, y + dy
 
         if is_valid_move(next_x, next_y, board):
+            total_movements += 1 #Para cada movimento válido, incrementa 1
             board[next_x][next_y] = move_count
             #updates.append([row[:] for row in board])  # Record current state
 
@@ -35,6 +38,7 @@ def depth_limited_search(board, x, y, move_count, depth_limit):
     return False
 
 def print_board(board):
+    global total_movements
     """
     Print the chessboard in a readable format.
     """
@@ -53,9 +57,12 @@ def print_board(board):
         board[i][j] = mov_count
         updates.append([row[:] for row in board])
         mov_count += 1
+
     for update in updates:
-        socketio.emit('update_board', {'board': update})
+        socketio.emit('update_board', {'board': update, 'movements': "Calculando..."})
         time.sleep(0.5)  # Delay for frontend visualization
+    # Atualiza número de movimentos
+    socketio.emit('update_movements', {'movements': str(total_movements)})
 
 '''def solve_knights_tour():
     board = [[-1 for _ in range(N)] for _ in range(N)]
@@ -75,6 +82,8 @@ def start_knights_tour():
     return "Knight's Tour started"
 
 def run_knights_tour():
+    global total_movements
+    total_movements = 0 # Inicializa quantidade de movimentos
     board = [[-1 for _ in range(N)] for _ in range(N)]
     board[0][0] = 0
     
