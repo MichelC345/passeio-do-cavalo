@@ -16,28 +16,45 @@ const n = 5;
 
 export default function Home() {
   const [board, setBoard] = useState(Array(n).fill(Array(n).fill(-1)));
-  const [movements, setMovements] = useState("");
+  const [movements, setMovements] = useState(0);
+  const [executionTime, setExecutionTime] = useState(0);
+  const [memoryUsed, setMemoryUsed] = useState("");
+  const [generatedNodes, setGeneratedNodes] = useState(0);
+  const [visitedNodes, setVisitedNodes] = useState(0);
+  const [isFinished, setIsFinished] = useState(false); // Tracks algorithm status
 
   useEffect(() => {
-    // Listen for board updates from the backend
     socket.on("update_board", (data) => {
       setBoard(data.board);
-      setMovements(data.movements);
+    });
+
+    socket.on("update_nodes", (data) => {
+      setGeneratedNodes(data.generated_nodes);
+      setVisitedNodes(data.visited_nodes);
+    });
+
+    socket.on("update_time", (data) => {
+      setExecutionTime(data.execution_time);
+      setIsFinished(true); // Mark as finished
+    });
+
+    socket.on("update_memory", (data) => {
+      setMemoryUsed(data.memory_used);
     });
 
     // Cleanup on unmount
-    return () => socket.off("update_board");
-  }, []);
-
-  useEffect(() => {
-    socket.on("update_movements", (data) => {
-      setMovements(data.movements);
-    });
-
-    return () => socket.off("update_movements");
+    return () => {
+      socket.off("update_board");
+      socket.off("update_time");
+      socket.off("update_memory");
+      socket.off("update_nodes");
+    };
   }, []);
 
   const initHC = async () => {
+    setIsFinished(false);
+    setGeneratedNodes(0);
+    setVisitedNodes(0);
     socket.emit("start");
   }
 
@@ -74,7 +91,16 @@ export default function Home() {
           <Button onClick={initHC} className="mt-10">Iniciar algoritmo</Button>
         </CardContent>
         <CardFooter>
-          Movimentos: {movements}
+          {isFinished ? (
+            <>
+              Tempo de execução: {executionTime} <br />
+              Memória utilizada: {memoryUsed} <br />
+              Número de nós gerados: {generatedNodes} <br />
+              Número de nós visitados: {visitedNodes} <br />
+            </>
+          ) : (
+            <>Aguardando execução do algoritmo...</>
+          )}
         </CardFooter>
       </Card>
   );
