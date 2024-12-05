@@ -11,17 +11,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const socket = io("http://localhost:5000"); // Backend WebSocket URL
-const n = 5;
+const socket = io("http://localhost:5000"); // Conexão estabelecida via WebSocket
+const n = 5; // Valor de N, por padrão 5
 
 export default function Home() {
+  const [inputN, setInputN] = useState(5);
+  const [n, setN] = useState(5);
   const [board, setBoard] = useState(Array(n).fill(Array(n).fill(-1)));
-  const [movements, setMovements] = useState(0);
   const [executionTime, setExecutionTime] = useState(0);
-  const [memoryUsed, setMemoryUsed] = useState("");
+  const [memoryUsed, setMemoryUsed] = useState(0);
   const [generatedNodes, setGeneratedNodes] = useState(0);
   const [visitedNodes, setVisitedNodes] = useState(0);
-  const [isFinished, setIsFinished] = useState(false); // Tracks algorithm status
+  const [isFinished, setIsFinished] = useState(false);
+  const [isPossible, setIsPossible] = useState(false);
+  const [lin, setLin] = useState(0);
+  const [col, setCol] = useState(0);
 
   useEffect(() => {
     socket.on("update_board", (data) => {
@@ -35,14 +39,17 @@ export default function Home() {
 
     socket.on("update_time", (data) => {
       setExecutionTime(data.execution_time);
-      setIsFinished(true); // Mark as finished
     });
 
     socket.on("update_memory", (data) => {
       setMemoryUsed(data.memory_used);
     });
 
-    // Cleanup on unmount
+    socket.on("execution_finished", (data) => {
+      setIsPossible(data.possible);
+      setIsFinished(true);
+    })
+
     return () => {
       socket.off("update_board");
       socket.off("update_time");
@@ -51,11 +58,40 @@ export default function Home() {
     };
   }, []);
 
+  const handleGridSizeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newSize = parseInt(event.target.value, 10);
+    if (!isNaN(newSize) && newSize > 0) {
+      setInputN(newSize);
+    }
+  };
+  
+  const handleLineChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newSize = parseInt(event.target.value, 10);
+    if (!isNaN(newSize) && newSize > 0) {
+      setLin(newSize);
+    }
+  };
+
+  const handleColumnChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newSize = parseInt(event.target.value, 10);
+    if (!isNaN(newSize) && newSize > 0) {
+      setCol(newSize);
+    }
+  };
+
+  const applyGridSize = () => {
+    setN(inputN);
+    setLin(lin);
+    setCol(col);
+    setBoard(Array(inputN).fill(Array(inputN).fill(-1)));
+    setIsFinished(false);
+  };
+
   const initHC = async () => {
     setIsFinished(false);
     setGeneratedNodes(0);
     setVisitedNodes(0);
-    socket.emit("start");
+    socket.emit("start", {n, lin, col});
   }
 
   return (
@@ -64,37 +100,92 @@ export default function Home() {
           <CardTitle>Passeio do Cavalo usando busca em profundidade limitada</CardTitle>
         </CardHeader>
         <CardContent className="justify-between items-center">
-            <div style={{
+        <div style={{ marginBottom: "20px" }}>
+          <label htmlFor="grid-size">Tamanho do tabuleiro (N): </label>
+          <input
+            id="grid-size"
+            type="number"
+            value={inputN}
+            onChange={handleGridSizeChange}
+            style={{
+              width: "50px",
+              textAlign: "center",
+              marginLeft: "10px",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              padding: "5px",
+            }}
+          />
+          <label htmlFor="grid-size" className="ml-10">Posição Inicial: </label>
+          <input
+            id="grid-size"
+            type="number"
+            value={lin}
+            onChange={handleLineChange}
+            style={{
+              width: "50px",
+              textAlign: "center",
+              marginLeft: "10px",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              padding: "5px",
+            }}
+          />
+          <input
+            id="grid-size"
+            type="number"
+            value={col}
+            onChange={handleColumnChange}
+            style={{
+              width: "50px",
+              textAlign: "center",
+              marginLeft: "10px",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              padding: "5px",
+            }}
+          />
+        </div>
+        <div style={{ marginBottom: "20px", alignItems: "center", justifyContent: "center"}}>
+          
+          <Button onClick={applyGridSize} style={{marginLeft: "40%",}}>Confirmar</Button>
+        </div>
+        
+        <div
+          style={{
             display: "grid",
-            gridTemplateColumns: `repeat(5, 50px)`,
+            gridTemplateColumns: `repeat(${n}, 50px)`,
             gap: "2px",
-          }}>
-            {board.flat().map((value, idx) => (
-              <div
-                key={idx}
-                style={{
-                  width: "50px",
-                  height: "50px",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  backgroundColor: value === -1 ? "#ddd" : "#4caf50",
-                  color: "#fff",
-                  fontWeight: "bold",
-                  border: "1px solid #ccc",
-                }}
-              >
-                {value !== -1 ? value : ""}
-              </div>
-            ))}
-          </div>
-          <Button onClick={initHC} className="mt-10">Iniciar algoritmo</Button>
+            marginLeft: "25%",
+          }}
+        >
+          {board.flat().map((value, idx) => (
+            <div
+              key={idx}
+              style={{
+                width: "50px",
+                height: "50px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: value === -1 ? "#ddd" : "#4caf50",
+                color: "#fff",
+                fontWeight: "bold",
+                border: "1px solid #ccc",
+              }}
+            >
+              {value !== -1 ? value : ""}
+            </div>
+          ))}
+        </div>
+          <Button onClick={initHC} className="mt-10" style={{marginLeft: "35%",}}>Iniciar algoritmo</Button>
         </CardContent>
         <CardFooter>
           {isFinished ? (
             <>
+              {!isPossible ? `Não foi encontrada uma solução para o tamanho ${n}`: "Solução obtida com sucesso"} <br />
               Tempo de execução: {executionTime} <br />
-              Memória utilizada: {memoryUsed} <br />
+              Memória utilizada: {memoryUsed} MB <br />
               Número de nós gerados: {generatedNodes} <br />
               Número de nós visitados: {visitedNodes} <br />
             </>
