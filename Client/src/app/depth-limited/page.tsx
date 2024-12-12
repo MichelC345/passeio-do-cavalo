@@ -91,7 +91,7 @@ export default function Home() {
     setIsFinished(false);
     setGeneratedNodes(0);
     setVisitedNodes(0);
-    socket.emit("start", {n, lin, col});
+    socket.emit("start", {n, lin, col, alg: "DLS"});
   }
 
   return (
@@ -184,7 +184,7 @@ export default function Home() {
           {isFinished ? (
             <>
               {!isPossible ? `Não foi encontrada uma solução para o tamanho ${n}`: "Solução obtida com sucesso"} <br />
-              Tempo de execução: {executionTime} <br />
+              Tempo de execução: {executionTime} segundos <br />
               Memória utilizada: {memoryUsed} MB <br />
               Número de nós gerados: {generatedNodes} <br />
               Número de nós visitados: {visitedNodes} <br />
