@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
 
 const socket = io("http://localhost:5000"); // Conexão estabelecida via WebSocket
 const n = 5; // Valor de N, por padrão 5
@@ -26,6 +27,7 @@ export default function Home() {
   const [isPossible, setIsPossible] = useState(false);
   const [lin, setLin] = useState(0);
   const [col, setCol] = useState(0);
+  const [timeLimitExceed, setTimeLimitExceed] = useState(false);
 
   useEffect(() => {
     socket.on("update_board", (data) => {
@@ -48,6 +50,7 @@ export default function Home() {
     socket.on("execution_finished", (data) => {
       setIsPossible(data.possible);
       setIsFinished(true);
+      setTimeLimitExceed(data.tle);
     })
 
     return () => {
@@ -87,12 +90,18 @@ export default function Home() {
     setIsFinished(false);
   };
 
-  const initHC = async () => {
+  const initDLS = async () => {
     setIsFinished(false);
     setGeneratedNodes(0);
     setVisitedNodes(0);
+    setTimeLimitExceed(false);
     socket.emit("start", {n, lin, col, alg: "DLS"});
-  }
+  };
+
+  const router = useRouter();
+  const redirectToHome = () => {
+    router.push('/');
+  };
 
   return (
       <Card style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -146,44 +155,48 @@ export default function Home() {
             }}
           />
         </div>
-        <div style={{ marginBottom: "20px", alignItems: "center", justifyContent: "center"}}>
-          
-          <Button onClick={applyGridSize} style={{marginLeft: "40%",}}>Confirmar</Button>
-        </div>
         
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${n}, 50px)`,
-            gap: "2px",
-            marginLeft: "25%",
+        <div style={{display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "20px",
           }}
         >
-          {board.flat().map((value, idx) => (
-            <div
-              key={idx}
-              style={{
-                width: "50px",
-                height: "50px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                backgroundColor: value === -1 ? "#ddd" : "#4caf50",
-                color: "#fff",
-                fontWeight: "bold",
-                border: "1px solid #ccc",
-              }}
-            >
-              {value !== -1 ? value : ""}
-            </div>
-          ))}
+          <Button onClick={applyGridSize} style={{ marginBottom: "20px", textAlign: "center" }}>Confirmar</Button>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${n}, 50px)`,
+              gap: "2px",
+            }}
+          >
+            {board.flat().map((value, idx) => (
+              <div
+                key={idx}
+                style={{
+                  width: "50px",
+                  height: "50px",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: value === -1 ? "#ddd" : "#4caf50",
+                  color: "#fff",
+                  fontWeight: "bold",
+                  border: "1px solid #ccc",
+                }}
+              >
+                {value !== -1 ? value : ""}
+              </div>
+            ))}
+          </div>
+          <Button onClick={initDLS} className="mt-10" style={{ marginTop: "20px", textAlign: "center" }}>Iniciar algoritmo</Button>
         </div>
-          <Button onClick={initHC} className="mt-10" style={{marginLeft: "35%",}}>Iniciar algoritmo</Button>
         </CardContent>
-        <CardFooter>
+        <CardFooter style={{display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: "20px"}}>
           {isFinished ? (
             <>
-              {!isPossible ? `Não foi encontrada uma solução para o tamanho ${n}`: "Solução obtida com sucesso"} <br />
+              {timeLimitExceed ? "Tempo limite extrapolado!" : 
+              !isPossible ? `Não foi encontrada uma solução para o tamanho ${n}`: "Solução obtida com sucesso"} <br />
               Tempo de execução: {executionTime} segundos <br />
               Memória utilizada: {memoryUsed} MB <br />
               Número de nós gerados: {generatedNodes} <br />
@@ -192,6 +205,7 @@ export default function Home() {
           ) : (
             <>Aguardando execução do algoritmo...</>
           )}
+          <Button onClick={redirectToHome} className="mt-10">Voltar</Button>
         </CardFooter>
       </Card>
   );

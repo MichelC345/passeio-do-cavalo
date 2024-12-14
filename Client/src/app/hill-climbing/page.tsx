@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
 
 const socket = io("http://localhost:5000"); // Conexão estabelecida via WebSocket
 const n = 5; // Valor de N, por padrão 5
@@ -92,99 +93,107 @@ export default function Home() {
     setGeneratedNodes(0);
     setVisitedNodes(0);
     socket.emit("start", {n, lin, col});
-  }
+  };
+
+  const router = useRouter();
+  const redirectToHome = () => {
+    router.push('/');
+  };
 
   return (
       <Card style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
         <CardHeader>
-          <CardTitle>Passeio do Cavalo usando busca em profundidade limitada</CardTitle>
+          <CardTitle>Passeio do Cavalo usando busca subindo a encosta (Hill Climbing)</CardTitle>
         </CardHeader>
         <CardContent className="justify-between items-center">
-        <div style={{ marginBottom: "20px" }}>
-          <label htmlFor="grid-size">Tamanho do tabuleiro (N): </label>
-          <input
-            id="grid-size"
-            type="number"
-            value={inputN}
-            onChange={handleGridSizeChange}
-            style={{
-              width: "50px",
-              textAlign: "center",
-              marginLeft: "10px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              padding: "5px",
-            }}
-          />
-          <label htmlFor="grid-size" className="ml-10">Posição Inicial: </label>
-          <input
-            id="grid-size"
-            type="number"
-            value={lin}
-            onChange={handleLineChange}
-            style={{
-              width: "50px",
-              textAlign: "center",
-              marginLeft: "10px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              padding: "5px",
-            }}
-          />
-          <input
-            id="grid-size"
-            type="number"
-            value={col}
-            onChange={handleColumnChange}
-            style={{
-              width: "50px",
-              textAlign: "center",
-              marginLeft: "10px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              padding: "5px",
-            }}
-          />
-        </div>
-        <div style={{ marginBottom: "20px", alignItems: "center", justifyContent: "center"}}>
-          
-          <Button onClick={applyGridSize} style={{marginLeft: "40%",}}>Confirmar</Button>
-        </div>
-        
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${n}, 50px)`,
-            gap: "2px",
-            marginLeft: "25%",
-          }}
-        >
-          {board.flat().map((value, idx) => (
-            <div
-              key={idx}
+          <div style={{ marginBottom: "20px" }}>
+            <label htmlFor="grid-size">Tamanho do tabuleiro (N): </label>
+            <input
+              id="grid-size"
+              type="number"
+              value={inputN}
+              onChange={handleGridSizeChange}
               style={{
                 width: "50px",
-                height: "50px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                backgroundColor: value === -1 ? "#ddd" : "#4caf50",
-                color: "#fff",
-                fontWeight: "bold",
+                textAlign: "center",
+                marginLeft: "10px",
                 border: "1px solid #ccc",
+                borderRadius: "4px",
+                padding: "5px",
+              }}
+            />
+            <label htmlFor="grid-size" className="ml-10">Posição Inicial: </label>
+            <input
+              id="grid-size"
+              type="number"
+              value={lin}
+              onChange={handleLineChange}
+              style={{
+                width: "50px",
+                textAlign: "center",
+                marginLeft: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                padding: "5px",
+              }}
+            />
+            <input
+              id="grid-size"
+              type="number"
+              value={col}
+              onChange={handleColumnChange}
+              style={{
+                width: "50px",
+                textAlign: "center",
+                marginLeft: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                padding: "5px",
+              }}
+            />
+            </div>
+          
+          <div style={{display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "20px",
+            }}
+          >
+            <Button onClick={applyGridSize} style={{ marginBottom: "20px", textAlign: "center" }}>Confirmar</Button>
+            <div //not aligned
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${n}, 50px)`,
+                gap: "2px",
               }}
             >
-              {value !== -1 ? value : ""}
+              {board.flat().map((value, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    width: "50px",
+                    height: "50px",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    backgroundColor: value === -1 ? "#ddd" : "#4caf50",
+                    color: "#fff",
+                    fontWeight: "bold",
+                    border: "1px solid #ccc",
+                  }}
+                >
+                  {value !== -1 ? value : ""}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-          <Button onClick={initHC} className="mt-10" style={{marginLeft: "35%",}}>Iniciar algoritmo</Button>
+            <Button onClick={initHC} style={{ marginTop: "20px", textAlign: "center" }}>Iniciar algoritmo</Button>
+          </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter style={{display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: "20px"}}>
           {isFinished ? (
             <>
               {!isPossible ? `Não foi encontrada uma solução para o tamanho ${n}`: "Solução obtida com sucesso"} <br />
-              Tempo de execução: {executionTime} <br />
+              Tempo de execução: {executionTime} segundos <br />
               Memória utilizada: {memoryUsed} MB <br />
               Número de nós gerados: {generatedNodes} <br />
               Número de nós visitados: {visitedNodes} <br />
@@ -192,6 +201,7 @@ export default function Home() {
           ) : (
             <>Aguardando execução do algoritmo...</>
           )}
+          <Button onClick={redirectToHome} className="mt-10">Voltar</Button>
         </CardFooter>
       </Card>
   );

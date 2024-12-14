@@ -15,11 +15,9 @@ col = 0
 DLS = False
 HC = True
 
-# Array que determina os possíveis movimentos que o cavalo pode fazer
-KNIGHT_MOVES = [
-    (2, 1), (1, 2), (-1, 2), (-2, 1),
-    (-2, -1), (-1, -2), (1, -2), (2, -1)
-]
+# Variável booleana que determina se o algoritmo extrapolou o tempo
+TLE = False
+TLE_LIMIT = 10
 
 class KnightTourProblem:
     def __init__(self, board_size, initial_position):
@@ -36,54 +34,115 @@ class KnightTourProblem:
     def is_goal(self, move_count):
         return move_count == self.total_moves
 
-    # Função para verificar se o movimento está dentro dos limites da borda e se ainda não foi verificado
+    # Função para verificar se o movimento está dentro do tabuleiro e ainda não foi visitado
     def is_valid_move(self, x, y):
-        # Verifica se o movimento está dentro do tabuleiro e ainda não foi visitado
         return 0 <= x < self.board_size and 0 <= y < self.board_size and self.board[x][y] == -1
 
+class KnightTourDLSSolver(KnightTourProblem):
     def expand(self, position):
         x, y = position
         valid_moves = []
         random_moves = random.sample(self.knight_moves, len(self.knight_moves))
         for dx, dy in random_moves:
             nx, ny = x + dx, y + dy
-            #if 0 <= nx < self.board_size and 0 <= ny < self.board_size and self.board[nx][ny] == -1:
             if self.is_valid_move(nx, ny):
                 valid_moves.append((nx, ny))
         return valid_moves
+
+    def depth_limited_search(self, depth_limit):
+        global visited_nodes, generated_nodes
+        x, y = self.initial_position
+        self.board[x][y] = 0  # Marca o ponto inicial
+        visited_nodes += 1
+        generated_nodes += 1
+        return self.recursive_dls((x, y), 1, depth_limit)
+
+    def recursive_dls(self, node, move_count, depth_limit):
+        global visited_nodes, generated_nodes, TLE, start_time
+        # No momento que o programa chama a função e acessa esta área, um nó está sendo visitado
+        # Portanto, incrementa visited_nodes
+        visited_nodes += 1
+        self.cont += 1
+        actual_time = time.time()-start_time
+        if actual_time > TLE_LIMIT:
+            print("deu tle", actual_time)
+            TLE = True
+            return
+        elif self.is_goal(move_count):
+            return [node]
+        elif depth_limit == 0:
+            return "cutoff"
+        else:
+            #x, y = node
+            # Percorre os vizinhos do nó atual
+            for child in self.expand(node):
+                nx, ny = child
+                self.board[nx][ny] = move_count  # Faz o movimento
+                # A cada vizinho, uma nova chamada é realizada, portanto um novo nó é gerado
+                generated_nodes += 1
+                result = self.recursive_dls(child, move_count + 1, depth_limit - 1)
+                if TLE:
+                    return
+                elif result == "cutoff":
+                    self.board[nx][ny] = -1  # Desfaz o movimento (backtracking)
+                    continue
+                elif result != "failure":
+                    return [node] + result
+                self.board[nx][ny] = -1  # Desfaz o movimento (backtracking)
+            return "failure"
+
+class KnightTourHCSolver(KnightTourProblem):
+    def warnsdorff_rule(self, x, y):
+        # Calcula o grau de Warnsdorff para a posição (x, y)
+        degree = 0
+        for dx, dy in self.knight_moves:
+            nx, ny = x + dx, y + dy
+            if self.is_valid_move(nx, ny):
+                degree += 1
+        return degree
     
+    def evaluation(self, x, y):
+        # Retorna o custo da posição (x, y)
+        return self.warnsdorff_rule(x, y)
 
-def depth_limited_search(problem, depth_limit):
-    x, y = problem.initial_position
-    problem.board[x][y] = 0  # Marca o ponto inicial
-    return recursive_dls((x, y), problem, 1, depth_limit)
+    def next_move(self, x, y):
+        global visited_nodes, generated_nodes
+        # Encontra o próximo movimento
+        possible_moves = []
+        for dx, dy in self.knight_moves: 
+            nx, ny = x + dx, y + dy
+            if self.is_valid_move(nx, ny):
+                cost = self.evaluation(nx, ny)
+                possible_moves.append((cost, nx, ny))
+                generated_nodes += 1
 
-def recursive_dls(node, problem, move_count, depth_limit):
-    global visited_nodes, generated_nodes
-    # No momento que chama a função e acessa esta área, um nó está sendo visitado
-    # Portanto, incrementa visited_nodes
-    visited_nodes += 1
-    problem.cont += 1
-    if problem.is_goal(move_count):
-        return [node]
-    elif depth_limit == 0:
-        return "cutoff"
-    else:
-        #x, y = node
-        # Percorre os vizinhos do nó atual
-        for child in problem.expand(node):
-            nx, ny = child
-            problem.board[nx][ny] = move_count  # Faz o movimento
-            # A cada vizinho, uma nova chamada é realizada, portanto um novo nó é gerado
-            generated_nodes += 1
-            result = recursive_dls(child, problem, move_count + 1, depth_limit - 1)
-            if result == "cutoff":
-                problem.board[nx][ny] = -1  # Desfaz o movimento (backtracking)
-                continue
-            elif result != "failure":
-                return [node] + result
-            problem.board[nx][ny] = -1  # Desfaz o movimento (backtracking)
-        return "failure"
+        possible_moves.sort()  # Ordena pelo custo (menor primeiro)
+        if possible_moves:
+            _, nx, ny = possible_moves[0]
+            return nx, ny
+        return None  # Nenhum movimento possível
+
+    def hill_climbing(self):
+        global visited_nodes, generated_nodes
+        x, y = self.initial_position
+        self.board[x][y] = 0  # Marca o ponto inicial
+        move_count = 1
+        visited_nodes += 1
+        generated_nodes += 1
+
+        while move_count < self.board_size * self.board_size:
+            self.cont += 1  # Incrementa o contador de iterações
+            next_move = self.next_move(x, y)
+            if next_move is None:
+                return False  # Falha em encontrar o caminho
+            # Posição atualizada, um novo nó foi visitado
+            x, y = next_move
+            visited_nodes += 1
+            self.board[x][y] = move_count 
+            move_count += 1
+
+        return True 
+
 
 # Função para exibir a solução passo a passo no front-end
 def print_board(board):
@@ -107,7 +166,7 @@ def print_board(board):
     # Atualiza o front-end exibindo passo a passo os estados da solução
     for update in updates:
         socketio.emit('update_board', {'board': update})
-        time.sleep(0.5)
+        time.sleep(0.2)
 
 # A rota /start determina o início do algoritmo de busca
 @socketio.on("start")
@@ -125,8 +184,9 @@ def start_knights_tour(data):
     
 
 def run_knights_tour(alg):
-    global N, generated_nodes, visited_nodes, lin, col
+    global N, generated_nodes, visited_nodes, lin, col, start_time, end_time, TLE
     # Inicialização dos valores
+    TLE = False
     possible = False
     generated_nodes = 0
     visited_nodes = 0
@@ -134,45 +194,43 @@ def run_knights_tour(alg):
     board[lin][col] = 0
 
     initial_position = (lin, col)
-    depth_limit = N*N-1
-    problem = KnightTourProblem(N, initial_position)
     
     # Utiliza-se a biblioteca psutil para obter as informações do processo e computar a memória utilizada
     process = psutil.Process()
-    # A biblioteca time é utilizada para obter o tempo de execução
-    start_time = time.time()
 
     # Caso a solução tenha sido encontrada, informa os estados no front-end e atualiza a variável booleana possible
     if alg == DLS:
-        path = depth_limited_search(problem, depth_limit)
+        solver = KnightTourDLSSolver(N, initial_position)
+        depth_limit = N*N-1
+        start_time = time.time()
+        path = solver.depth_limited_search(depth_limit)
         # Aqui o algoritmo já terminou de executar, portanto o tempo final é obtido
         end_time = time.time()
         if path:
-            #print("Movimentos: ", problem.cont)
-            #print("Path found:")
-            print_board(problem.board)
+            print_board(solver.board)
             possible = True
-            #for row in problem.board:
-            #    print(" ".join(f"{cell:2}" for cell in row))
-        '''if depth_limited_search(board, lin, col, 1, N * N):
-            print_board(board)
-            possible = True'''
-    '''elif alg == HC:
-        if hill_climbing(board, lin, col, 1, N * N):
-            print_board(board)
-            possible = True'''
+    elif alg == HC:
+        solver = KnightTourHCSolver(N, initial_position)
+        start_time = time.time()
+        path = solver.hill_climbing()
+        # Aqui o algoritmo já terminou de executar, portanto o tempo final é obtido
+        end_time = time.time()
+        if path:
+            print_board(solver.board)
+            possible = True
+
 
     elapsed_time = end_time - start_time # Tempo de execução
     memory_used = process.memory_info().rss / (1024 * 1024)  # Armazena a memória em MB
 
     # Passa os valores obtidos para o front-end
-    socketio.emit("update_time", {"execution_time": round(elapsed_time, 2)})
-    socketio.emit("update_memory", {"memory_used": round(memory_used, 2)})
+    socketio.emit("update_time", {"execution_time": round(elapsed_time, 4)})
+    socketio.emit("update_memory", {"memory_used": round(memory_used, 4)})
     socketio.emit('update_nodes', {
         'generated_nodes': generated_nodes,
         'visited_nodes': visited_nodes
     })
-    socketio.emit('execution_finished', {'possible': possible})
+    socketio.emit('execution_finished', {'possible': possible, 'tle': TLE})
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000)
